@@ -42,31 +42,50 @@ const listSchema = {
 
 const List = mongoose.model("List", listSchema);
 
-app.get("/", function (req, res) {
 
-    Item.find().then(foundItems => {
-        // console.log(foundItems);
+// adding all lists to ejs views
+app.get('/', async (req, res) => {
+    try {
+        const foundItems = await Item.find();
+        const allLists = await List.find();
 
         if (foundItems.length === 0) {
-
-            Item.insertMany(defaultItems)
-                .then(results => {
-                    console.log('Documents inserted successfully');
-                })
-                .catch(err => {
-                    console.error(err);
-                });
-            res.redirect("/");
-        }
-        else {
-            res.render("list", { listTitle: "Today", newListItems: foundItems });
+            await Item.insertMany(defaultItems);
+            return res.redirect('/');
         }
 
-    })
-        .catch(err => {
-            console.error(err);
-        });
+        res.render("list", { listTitle: "Today", newListItems: foundItems, allLists });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server error connecting to mongoDB");
+    }
 });
+
+// app.get("/", function (req, res) {
+
+//     Item.find().then(foundItems => {
+//         // console.log(foundItems);
+
+//         if (foundItems.length === 0) {
+
+//             Item.insertMany(defaultItems)
+//                 .then(results => {
+//                     console.log('Documents inserted successfully');
+//                 })
+//                 .catch(err => {
+//                     console.error(err);
+//                 });
+//             res.redirect("/");
+//         }
+//         else {
+//             res.render("list", { listTitle: "Today", newListItems: foundItems });
+//         }
+
+//     })
+//         .catch(err => {
+//             console.error(err);
+//         });
+// });
 
 
 app.get("/about", (req, res) => {
@@ -126,6 +145,8 @@ app.post("/", async function (req, res) {
             .catch(err => {
                 console.error(err);
             });
+        const allLists = List.find();
+
 
     }
 
