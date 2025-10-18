@@ -77,32 +77,60 @@ app.get("/about", (req, res) => {
     });
 });
 
-
-app.get("/:customListName", function (req, res) {
+app.get("/:customListName", async (req, res) => {
     const customListName = _.capitalize(req.params.customListName);
 
-    List.findOne({ name: customListName })
-        .then(foundList => {
-            if (!foundList) {
-                // Create a new list
-                const list = new List({
-                    name: customListName,
-                    items: defaultItems
-                });
-                list.save();
-                res.redirect("/" + customListName);
-            }
-            else {
-                // show an existing list
-                res.render("list", { listTitle: foundList.name, newListItems: foundList.items });
-            }
-        })
-        .catch(err => {
-            console.error(err);
-        });
+    try {
+        const foundList = await List.findOne({ name: customListName });
+        const allLists = await List.find();
+        console.log(Array.isArray(allLists));
 
-
+        if (!foundList) {
+            const list = new List({ name: customListName, items: defaultItems });
+            await list.save();
+            return res.redirect("/" + customListName);
+        } else if (customListName.toLowerCase() === "about") {
+            return res.redirect("/about");
+        } else {
+            res.render("list", {
+                listTitle: foundList.name,
+                newListItems: foundList.items,
+                allLists
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server error in customlistname route");
+    }
 });
+
+
+// app.get("/:customListName", function (req, res) {
+//     const customListName = _.capitalize(req.params.customListName);
+//     const allLists = List.find();
+
+//     List.findOne({ name: customListName })
+//         .then(foundList => {
+//             if (!foundList) {
+//                 // Create a new list
+//                 const list = new List({
+//                     name: customListName,
+//                     items: defaultItems
+//                 });
+//                 list.save();
+//                 res.redirect("/" + customListName);
+//             }
+//             else {
+//                 // show an existing list
+//                 res.render("list", { listTitle: foundList.name, newListItems: foundList.items, allLists });
+//             }
+//         })
+//         .catch(err => {
+//             console.error(err);
+//         });
+
+
+// });
 
 app.post("/", function (req, res) {
 
@@ -170,8 +198,73 @@ app.post("/delete", function (req, res) {
 
 });
 
-app.get("/about", function (req, res) {
-    res.render("about");
+// app.get("/about", function (req, res) {
+//     res.render("about");
+// });
+
+
+
+// adding all lists to ejs views
+app.get('/', async (req, res) => {
+    try {
+        const foundItems = await Item.find();
+        const allLists = await List.find();
+
+        if (foundItems.length === 0) {
+            await Item.insertMany(defaultItems);
+            return res.redirect('/');
+        }
+
+        res.render("list", { listTitle: "Today", newListItems: foundItems, allLists });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server error connecting to mongoDB");
+    }
+});
+
+
+
+//route to create a new list
+
+app.post('/create-list', async (req, res) => {
+    const newListName = _.capitalize(req.body.newList);
+
+    try {
+        const existingList = await List.findOne({ name: newListName });
+
+        if (!existingList) {
+            const list = new List({
+                name: newListName,
+                items: []
+            });
+            await list.save();
+            console.log("New list created:", newListName);
+        }
+
+        res.redirect("/" + newListName);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server error creating new list");
+    }
+});
+
+//delete new list
+app.post("/deleteList", async (req, res) => {
+    const listName = req.body.listName;
+
+    try {
+        // Optional: prevent deleting the main list
+        if (listName === "Today") {
+            return res.redirect("/");
+        }
+
+        await List.findOneAndDelete({ name: listName });
+        console.log(`Deleted list: ${listName}`);
+        res.redirect("/");
+    } catch (err) {
+        console.error("Error deleting list:", err);
+        res.status(500).send("Error deleting list");
+    }
 });
 
 app.listen(3000, function () {
