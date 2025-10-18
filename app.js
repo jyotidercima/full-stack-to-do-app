@@ -145,9 +145,6 @@ app.post("/", async function (req, res) {
             .catch(err => {
                 console.error(err);
             });
-        const allLists = List.find();
-
-
     }
 
 
