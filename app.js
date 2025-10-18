@@ -77,62 +77,34 @@ app.get("/about", (req, res) => {
     });
 });
 
-app.get("/:customListName", async (req, res) => {
+
+app.get("/:customListName", function (req, res) {
     const customListName = _.capitalize(req.params.customListName);
 
-    try {
-        const foundList = await List.findOne({ name: customListName });
-        const allLists = await List.find();
-        console.log(Array.isArray(allLists));
+    List.findOne({ name: customListName })
+        .then(foundList => {
+            if (!foundList) {
+                // Create a new list
+                const list = new List({
+                    name: customListName,
+                    items: defaultItems
+                });
+                list.save();
+                res.redirect("/" + customListName);
+            }
+            else {
+                // show an existing list
+                res.render("list", { listTitle: foundList.name, newListItems: foundList.items });
+            }
+        })
+        .catch(err => {
+            console.error(err);
+        });
 
-        if (!foundList) {
-            const list = new List({ name: customListName, items: defaultItems });
-            await list.save();
-            return res.redirect("/" + customListName);
-        } else if (customListName.toLowerCase() === "about") {
-            return res.redirect("/about");
-        } else {
-            res.render("list", {
-                listTitle: foundList.name,
-                newListItems: foundList.items,
-                allLists
-            });
-        }
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Server error in customlistname route");
-    }
+
 });
 
-
-// app.get("/:customListName", function (req, res) {
-//     const customListName = _.capitalize(req.params.customListName);
-//     const allLists = List.find();
-
-//     List.findOne({ name: customListName })
-//         .then(foundList => {
-//             if (!foundList) {
-//                 // Create a new list
-//                 const list = new List({
-//                     name: customListName,
-//                     items: defaultItems
-//                 });
-//                 list.save();
-//                 res.redirect("/" + customListName);
-//             }
-//             else {
-//                 // show an existing list
-//                 res.render("list", { listTitle: foundList.name, newListItems: foundList.items, allLists });
-//             }
-//         })
-//         .catch(err => {
-//             console.error(err);
-//         });
-
-
-// });
-
-app.post("/", function (req, res) {
+app.post("/", async function (req, res) {
 
     const itemName = req.body.newItem;
     const listName = req.body.list;
@@ -154,6 +126,7 @@ app.post("/", function (req, res) {
             .catch(err => {
                 console.error(err);
             });
+
     }
 
 
@@ -209,6 +182,7 @@ app.get('/', async (req, res) => {
     try {
         const foundItems = await Item.find();
         const allLists = await List.find();
+        console.log(typeof (allLists));
 
         if (foundItems.length === 0) {
             await Item.insertMany(defaultItems);
@@ -218,7 +192,7 @@ app.get('/', async (req, res) => {
         res.render("list", { listTitle: "Today", newListItems: foundItems, allLists });
     } catch (err) {
         console.error(err);
-        res.status(500).send("Server error connecting to mongoDB");
+        res.status(500).send("Server error ");
     }
 });
 
